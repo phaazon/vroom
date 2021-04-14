@@ -13,7 +13,7 @@ function M.insert_highlights()
   vim.api.nvim_command('highlight default HopNextKey2 guifg=#2b8db3 ctermfg=33')
 
   -- Highlight used for the unmatched part of the buffer.
-  vim.api.nvim_command('highlight default HopUnmatched guifg=#666666 ctermfg=242')
+  vim.api.nvim_command('highlight default HopUnmatched guifg=#666666 guisp=#666666 ctermfg=242 cterm=nocombine')
 end
 
 function M.create_autocmd()
