@@ -1,5 +1,6 @@
 local defaults = require'hop.defaults'
 local hint = require'hop.hint'
+local Process = require'hop.process'
 
 local M = {}
 
@@ -234,9 +235,19 @@ end
 
 function M.hint_char1(opts)
   opts = get_command_opts(opts)
-  local ok, c = pcall(vim.fn.getchar)
+  local ok, a = pcall(vim.fn.getchar)
   if not ok then return end
-  hint_with(hint.by_case_searching(vim.fn.nr2char(c), true, opts), opts)
+  local c = vim.fn.nr2char(a)
+  if not opts.use_migemo then
+    hint_with(hint.by_case_searching(c, true, opts), opts)
+    return
+  end
+  local ok2, dict = pcall(require, 'hop.migemo_dict.' .. vim.o.encoding)
+  if not ok2 then
+    eprintln('hop-migemo does not support encoding: ' .. vim.o.encoding)
+    return
+  end
+  hint_with(hint.by_case_searching(dict[c], false, opts), opts)
 end
 
 function M.hint_char2(opts)
@@ -246,7 +257,23 @@ function M.hint_char2(opts)
   local ok2, b = pcall(vim.fn.getchar)
   if not ok2 then return end
   local pat = vim.fn.nr2char(a) .. vim.fn.nr2char(b)
-  hint_with(hint.by_case_searching(pat, true, opts), opts)
+  if not opts.use_migemo then
+    hint_with(hint.by_case_searching(pat, true, opts), opts)
+    return
+  end
+  local p = Process.new{
+    cmd = opts.migemo_cmd,
+    args = {'-v', '-d', opts.migemo_dict, '-w', pat},
+    verbose = opts.migemo_debug,
+  }
+  p:run(function(result)
+    if result.err:len() > 0 then
+      p:error('error occurred in executing cmigemo: ' .. result.err)
+    else
+      if opts.migemo_debug then vim.g.__hop_migemo_re = result.out end -- for debugging
+      hint_with(hint.by_case_searching(result.out, false, opts), opts)
+    end
+  end)
 end
 
 function M.hint_lines(opts)
